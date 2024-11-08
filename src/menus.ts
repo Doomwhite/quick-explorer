@@ -1,5 +1,5 @@
-import {Menu, App, MenuItem, debounce, Keymap, Scope} from "./obsidian";
-import {around} from "monkey-around";
+import { Menu, App, MenuItem, debounce, Keymap, Scope } from "./obsidian";
+import { around } from "monkey-around";
 
 declare module "obsidian" {
     interface Component {
@@ -48,7 +48,7 @@ export class PopupMenu extends (Menu as new (app: App) => Menu) { // XXX fixme w
     items: SearchableMenuItem[]
 
     match: string = ""
-    resetSearchOnTimeout = debounce(() => {this.match = "";}, 1500, true)
+    resetSearchOnTimeout = debounce(() => { this.match = ""; }, 1500, true)
     visible: boolean = false
 
     constructor(public parent: MenuParent, public app: App = parent instanceof App ? parent : parent.app) {
@@ -57,29 +57,50 @@ export class PopupMenu extends (Menu as new (app: App) => Menu) { // XXX fixme w
         if (parent instanceof PopupMenu) parent.setChildMenu(this);
 
         this.scope = new Scope;
-        this.scope.register([], "ArrowUp",   this.onArrowUp.bind(this));
-        this.scope.register([], "k",    this.onArrowUp.bind(this));
+        this.scope.register([], "o", this.onEnter.bind(this));
+        this.scope.register([], "Enter", this.onEnter.bind(this));
+        this.scope.register([], "Escape", this.onEscape.bind(this));
+
+        this.scope.register([], "ArrowUp", this.onArrowUp.bind(this));
+        this.scope.register([], "k", this.onArrowUp.bind(this));
         this.scope.register([], "ArrowDown", this.onArrowDown.bind(this));
-        this.scope.register([], "j",    this.onArrowDown.bind(this));
-        this.scope.register([], "Enter",     this.onEnter.bind(this));
-        this.scope.register([], "Escape",    this.onEscape.bind(this));
+        this.scope.register([], "j", this.onArrowDown.bind(this));
         this.scope.register([], "ArrowLeft", this.onArrowLeft.bind(this));
-        this.scope.register([], "h",    this.onArrowLeft.bind(this));
+        this.scope.register([], "h", this.onArrowLeft.bind(this));
+        this.scope.register([], "ArrowRight", this.onArrowRight.bind(this));
+        this.scope.register([], "l", this.onArrowRight.bind(this));
 
         this.scope.register([], "Home", this.onHome.bind(this));
-        this.scope.register([], "End",  this.onEnd.bind(this));
-        this.scope.register([], "ArrowRight", this.onArrowRight.bind(this));
-        this.scope.register([], "l",     this.onArrowRight.bind(this));
+        this.scope.register(["Shift"], "k", this.onHome.bind(this));
+        this.scope.register([], "End", this.onEnd.bind(this));
+        this.scope.register(["Shift"], "j", this.onEnd.bind(this));
+
+        this.scope.register(["Ctrl"], "u", this.onScrollTo(10));
+        this.scope.register(["Ctrl"], "d", this.onScrollTo(-10));
 
         // Make obsidian.Menu think mousedowns on our child menu(s) are happening
         // on us, so we won't close before an actual click occurs
         const menu = this;
-        around(this.dom, {contains(prev){ return function(target: Node) {
-            const ret = prev.call(this, target) || menu.child?.dom.contains(target);
-            return ret;
-        }}});
+        around(this.dom, {
+            contains(prev) {
+                return function (target: Node) {
+                    const ret = prev.call(this, target) || menu.child?.dom.contains(target);
+                    return ret;
+                }
+            }
+        });
         this.dom.addClass("qe-popup-menu");
         if (this.onMouseOver) this.dom.removeEventListener("mouseover", this.onMouseOver);
+    }
+
+    onScrollTo(rowCount: number) {
+        const scrollTo = () => {
+            let targetIndex = Math.min(this.items.length - 1, Math.max(0, this.selected - rowCount));
+            this.select(targetIndex);
+            return false;
+        };
+        
+        return scrollTo;
     }
 
     onEscape() {
@@ -92,7 +113,7 @@ export class PopupMenu extends (Menu as new (app: App) => Menu) { // XXX fixme w
         super.onload();
         this.visible = true;
         this.showSelected();
-        let lastX:number, lastY: number;
+        let lastX: number, lastY: number;
         // We wait until now to register so that any initial mouseover of the old mouse position will be skipped
         this.register(onElement(this.dom, "mouseover", ".menu-item", (event: MouseEvent, target: HTMLDivElement) => {
             if (lastX !== event.clientX || lastY !== event.clientY) {
@@ -125,7 +146,7 @@ export class PopupMenu extends (Menu as new (app: App) => Menu) { // XXX fixme w
 
     onKeyDown(event: KeyboardEvent) {
         const mod = Keymap.getModifiers(event);
-        if (event.key.length === 1 && !event.isComposing && (!mod || mod === "Shift") ) {
+        if (event.key.length === 1 && !event.isComposing && (!mod || mod === "Shift")) {
             let match = this.match + event.key;
             // Throw away pieces of the match until something matches or nothing's left
             while (match && !this.searchFor(match)) match = match.slice(1);
@@ -138,15 +159,15 @@ export class PopupMenu extends (Menu as new (app: App) => Menu) { // XXX fixme w
     searchFor(match: string) {
         const parts = match.split("").map(escapeRegex);
         return (
-            this.find(new RegExp("^"+ parts.join(""), "ui")) ||
-            this.find(new RegExp("^"+ parts.join(".*"), "ui")) ||
+            this.find(new RegExp("^" + parts.join(""), "ui")) ||
+            this.find(new RegExp("^" + parts.join(".*"), "ui")) ||
             this.find(new RegExp(parts.join(".*"), "ui"))
         );
     }
 
     find(pattern: RegExp) {
         let pos = Math.min(0, this.selected);
-        for (let i=this.items.length; i; ++pos, i--) {
+        for (let i = this.items.length; i; ++pos, i--) {
             if (this.items[pos]?.disabled) continue;
             if (this.items[pos]?.title?.match(pattern)) {
                 this.select(pos);
@@ -226,18 +247,18 @@ export class PopupMenu extends (Menu as new (app: App) => Menu) { // XXX fixme w
     }
 
     cascade(target: HTMLElement, event?: MouseEvent, onClose?: () => any, hOverlap = 15, vOverlap = 5) {
-        const {left, top, bottom, width} = target.getBoundingClientRect();
-        const centerX = Math.max(0, left + (target.matchParent(".menu") ? Math.min(150, width/3) : 0));
-        const win = window.activeWindow ?? window, {innerHeight, innerWidth} = win;
+        const { left, top, bottom, width } = target.getBoundingClientRect();
+        const centerX = Math.max(0, left + (target.matchParent(".menu") ? Math.min(150, width / 3) : 0));
+        const win = window.activeWindow ?? window, { innerHeight, innerWidth } = win;
 
         // Try to cascade down and to the right from the mouse or horizontal center
         // of the clicked item
-        const point = {x: event ? event.clientX  - hOverlap : centerX , y: bottom - vOverlap};
+        const point = { x: event ? event.clientX - hOverlap : centerX, y: bottom - vOverlap };
 
         // Measure the menu and see if it fits
         this.sort?.();
         win.document.body.appendChild(this.dom);
-        const {offsetWidth, offsetHeight} = this.dom;
+        const { offsetWidth, offsetHeight } = this.dom;
         const fitsBelow = point.y + offsetHeight < innerHeight;
         const fitsAbove = top - vOverlap - offsetHeight > 0;
         const fitsRight = point.x + offsetWidth <= innerWidth;
@@ -249,7 +270,7 @@ export class PopupMenu extends (Menu as new (app: App) => Menu) { // XXX fixme w
             if (fitsAbove) {
                 point.y = top - vOverlap;
             } else {
-                point.y = (bottom > innerHeight - (bottom-top)) ? top + vOverlap: innerHeight;
+                point.y = (bottom > innerHeight - (bottom - top)) ? top + vOverlap : innerHeight;
             }
         }
 
@@ -279,7 +300,7 @@ function escapeRegex(s: string) {
 }
 
 function onElement<K extends keyof HTMLElementEventMap>(
-    el: HTMLElement, type: K, selector:string,
+    el: HTMLElement, type: K, selector: string,
     listener: (this: HTMLElement, ev: HTMLElementEventMap[K], delegateTarget: HTMLElement) => any,
     options: boolean | AddEventListenerOptions = false
 ) {
