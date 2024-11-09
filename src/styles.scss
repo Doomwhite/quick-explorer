@@ -96,6 +96,7 @@ body:not(.is-frameless):not(.qe-hide-breadcrumbs) .status-bar {
 }
 
 .qe-popup-menu .menu-item:not(.is-disabled):not(.is-label) {
+    font-size: 18px;
     display: flex;
     align-items: center;    // vertically center icon, filename, and extension
     &.selected {
