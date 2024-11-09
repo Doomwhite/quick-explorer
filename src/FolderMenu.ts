@@ -40,7 +40,7 @@ interface HoverEditor extends HoverPopover {
 
 
 // Global auto preview mode
-let autoPreview = true
+let autoPreview = false
 
 export class FolderMenu extends PopupMenu implements HoverParent {
 
@@ -49,7 +49,7 @@ export class FolderMenu extends PopupMenu implements HoverParent {
     constructor(public parent: MenuParent, public folder: TFolder, public selectedFile?: TAbstractFile, public crumb?: Breadcrumb) {
         super(parent);
         this.loadFiles(folder, selectedFile);
-        this.scope.register([],        "Tab",   this.togglePreviewMode.bind(this));
+        // this.scope.register([],        "Tab",   this.togglePreviewMode.bind(this));
         this.scope.register(["Mod"],   "Enter", this.onEnter.bind(this));
         this.scope.register(["Alt"],   "Enter", this.onKeyboardContextMenu.bind(this));
         this.scope.register([],        "\\",    this.onKeyboardContextMenu.bind(this));
